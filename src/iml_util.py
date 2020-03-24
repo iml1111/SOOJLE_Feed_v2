@@ -2,7 +2,7 @@ import sys
 sys.path.insert(0,'../../')
 sys.path.insert(0,'../../SJ_AI/src/')
 sys.path.insert(0,'../../IML_Tokenizer/src/')
-from DB_INFO import (HOST, ID, PW)
+from db_info import (HOST, ID, PW)
 from pymongo import MongoClient
 import datetime
 
@@ -29,22 +29,3 @@ class IMLError(Exception):
 			self.msg = msg
 		def __str__(self):
 			return self.msg
-
-
-# 몽고디비 쿼리 프로젝션
-# 너무 길어서 여기로 옮겨둠
-proj = {
-            '_id': 1,
-            'title': 1,
-            'date': 1,
-            'img': 1,
-            'fav_cnt': 1,
-            'view': 1,
-            'url': 1,
-            'title_token': 1,
-            'info': 1,
-            'tag': 1,
-            'topic': 1,
-            'ft_vector': 1,
-            'end_date': 1
-        }
