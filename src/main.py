@@ -33,7 +33,7 @@ def get_userinfo(user_id):
 				"ft_vector":1,
 				# v2 뉴스피드일 경우, 
 				# 아래 파라미터가 필요없어짐
-				"tag_sum":1,
+				#"tag_sum":1,
 				# "measurement_num":1 
 			}
 		)
@@ -155,11 +155,11 @@ def get_sim(USER, POST, avg_popular = 20):
 	FAS = vec_sim(USER['ft_vector'], POST['ft_vector'])
 	result = (TOS*1) + (TAS*1) + (FAS*1) 
 
-	# # IS
-	# week_count = ((datetime.now() - POST['date']) / 7).days + 1
-	# # 최종 유사도 스코어 결정
-	# if avg_popular < (POST['popularity'] / week_count):
-	# 	result *= 1.3
+	# IS
+	week_count = ((datetime.now() - POST['date']) / 7).days + 1
+	# 최종 유사도 스코어 결정
+	if avg_popular < (POST['popularity'] / week_count):
+		result *= 1.3
 
 	# # Random
 	#result += np.random.random() * 1
@@ -178,7 +178,7 @@ def post_ranking(user, posts_list):
 		posts_list[idx] = sorted(posts_list[idx], 
 			key=operator.itemgetter('sim'), reverse=True)
 	# 각 카테고리를 지정된 갯수만큼 자르기
-	total_post_num = [120,50,50,50,30]
+	total_post_num = [80,32,32,32,20]
 	for idx, _ in enumerate(posts_list):
 		posts_list[idx] = posts_list[idx][:total_post_num[idx]]
 	return posts_list
@@ -211,7 +211,7 @@ if __name__ == '__main__':
 	for posts in post_list:
 		result += posts
 	random.shuffle(result)
-	for post in result[:20]:
+	for post in result[:]:
 		print("#--------------------------#")
 		print(post['title'])
 		print(post['date'], "Like:" ,post['fav_cnt']) 
