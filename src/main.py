@@ -46,13 +46,12 @@ def get_userinfo(user_id):
 
 # 사용자 태그 리스트와 카테고리별 태그들을 모아서
 # 의미 유사도를 조사한 후, 반환
-# 실제로 해당 연산은 미리 캐싱되어 있어야
-# 하기 때문에 시간 측정에서 제외
 def tag_sim_process(tags):
 	if tags in [None,[]]: 
 		raise IMLError("태그 데이터가 없음")
 
 	# 사용자 태그로 사용자 태그 벡터 구하기
+	# 원래 이미 캐싱되어 있어야 함 (중요*)
 	user_tags = []
 	for key,value in tags.items():
 		user_tags += [key] * value
@@ -73,8 +72,7 @@ def tag_sim_process(tags):
 	)
 
 	# 사용자와 카테고리간 의미 유사도 분석하기
-	# 각 카테고리별 유사도 정렬해서 반환
-	# 다음 함수에서 정렬된 순서대로 포스트 후보군을 가져오게 됨
+	# 카테고리도 마찬가지로 원래 이미 캐싱되어 있어야 함 (중요*)
 	cate_vec = []
 	for cate in cate_list:
 		vec = vec_sim(user_vec, get_doc_vector(cate['tag']))
@@ -90,17 +88,12 @@ def tag_sim_process(tags):
 @timer
 def get_candidates(user_info, cate_list):
 	post_list = []
-
-	# 모든 카테고리에서 기본적으로 최대 700개씩 가져옴
-	# POST_WEIGHT 변수를 일정 퍼센트씩 낮추면서 곱하는 것으로
-	# 각기 다른 개수의 후보군 추출
 	POST_NUM = 500
 	POST_WEIGHT = 150
 	MINUS_WEIGHT = -75
 
 	# 카테고리를 순회하며 post_list에 총 데이터 축적
 	# 각 카테고리별 유사도에 따라 가져오는 개수가 달라짐
-	print("\n# 후보군 추출 명단")
 	for cate in cate_list:
 		temp = list(db['posts'].find(
 			#각 카테고리별로 2달 이내의 정해진 수 만큼 추출
@@ -132,10 +125,6 @@ def get_candidates(user_info, cate_list):
 		).sort([('date', -1)]).limit(int(POST_NUM + POST_WEIGHT)))
 		post_list += [temp]
 		POST_WEIGHT += MINUS_WEIGHT
-		print(cate[0],":",len(temp))
-	print()
-	if post_list == []: 
-		raise IMLError("후보군 포스트가 없음")
 	return post_list
 
 #--------------------------------------------------#
@@ -154,15 +143,11 @@ def get_sim(USER, POST, avg_popular = 20):
 	#FAS
 	FAS = vec_sim(USER['ft_vector'], POST['ft_vector'])
 	result = (TOS*1) + (TAS*1) + (FAS*1) 
-
 	# IS
 	week_count = ((datetime.now() - POST['date']) / 7).days + 1
-	# 최종 유사도 스코어 결정
 	if avg_popular < (POST['popularity'] / week_count):
 		result *= 1.3
-
-	# # Random
-	# 랜덤을 제거하는게 결정사항은 아님, 주석으로 표시해둘 것
+	# Random
 	result += np.random.random() * 1
 		
 	return result
@@ -172,11 +157,10 @@ def post_ranking(user, posts_list):
 	# 연산을 위해 미리 캐싱해둠
 	user['norm'] = (norm(user['topic']))
 	user['tag_set'] = set(user['tag'].keys())
-	# 관심도 구하기 + 정렬 후 반환
+	# 관심도 구하기 + 벡터 삭제 + 정렬 후 반환
 	for idx, posts in enumerate(posts_list):
 		for post in posts:
 			post['topic'] = get_sim(user, post)
-			# 필요없는 칼럼 삭제 구문
 			del post['ft_vector']
 			del post['tag']
 		posts_list[idx] = sorted(posts_list[idx], 
@@ -196,18 +180,6 @@ if __name__ == '__main__':
 	candi_list = get_candidates(user_info, cate_list)
 	post_list = post_ranking(user_info, candi_list)
 
-	print("\n\n# 카테고리 최고 유사도")
-	for posts in post_list:
-		print(posts[0]['title'])
-		print(posts[0]['topic'])
-	print("\n# 카테고리별 평균 유사도")
-	avg_sims = [0,0,0,0,0]
-	for idx,posts in enumerate(post_list):
-		for post in posts:
-			avg_sims[idx] += post['topic']
-		avg_sims[idx] /= len(posts)
-		print(avg_sims[idx])
-
 	print("\n\n# 뉴스피드 테스트 상단 20개")
 	# 실제 셔플은 프론트단에서 
 	# 수행해야 하므로 시간측정 X
@@ -219,6 +191,20 @@ if __name__ == '__main__':
 		print("#--------------------------#")
 		print(post['title'])
 		print(post['date'], "Like:" ,post['fav_cnt']) 
+
+	# print("\n\n# 카테고리 최고 유사도")
+	# for posts in post_list:
+	# 	print(posts[0]['title'])
+	# 	print(posts[0]['topic'])
+	# print("\n# 카테고리별 평균 유사도")
+	# avg_sims = [0,0,0,0,0]
+	# for idx,posts in enumerate(post_list):
+	# 	for post in posts:
+	# 		avg_sims[idx] += post['topic']
+	# 	avg_sims[idx] /= len(posts)
+	# 	print(avg_sims[idx])
+
+	
 	
 	
 
