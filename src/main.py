@@ -162,7 +162,8 @@ def get_sim(USER, POST, avg_popular = 20):
 		result *= 1.3
 
 	# # Random
-	#result += np.random.random() * 1
+	# 랜덤을 제거하는게 결정사항은 아님, 주석으로 표시해둘 것
+	result += np.random.random() * 1
 		
 	return result
 
@@ -174,9 +175,12 @@ def post_ranking(user, posts_list):
 	# 관심도 구하기 + 정렬 후 반환
 	for idx, posts in enumerate(posts_list):
 		for post in posts:
-			post['sim'] = get_sim(user, post)
+			post['topic'] = get_sim(user, post)
+			# 필요없는 칼럼 삭제 구문
+			del post['ft_vector']
+			del post['tag']
 		posts_list[idx] = sorted(posts_list[idx], 
-			key=operator.itemgetter('sim'), reverse=True)
+			key=operator.itemgetter('topic'), reverse=True)
 	# 각 카테고리를 지정된 갯수만큼 자르기
 	total_post_num = [80,32,32,32,20]
 	for idx, _ in enumerate(posts_list):
@@ -189,18 +193,18 @@ def post_ranking(user, posts_list):
 if __name__ == '__main__':
 	user_info = get_userinfo("16011089")
 	cate_list = tag_sim_process(user_info['tag'])
-	post_list = get_candidates(user_info, cate_list)
-	post_list = post_ranking(user_info, post_list)
+	candi_list = get_candidates(user_info, cate_list)
+	post_list = post_ranking(user_info, candi_list)
 
 	print("\n\n# 카테고리 최고 유사도")
 	for posts in post_list:
 		print(posts[0]['title'])
-		print(posts[0]['sim'])
+		print(posts[0]['topic'])
 	print("\n# 카테고리별 평균 유사도")
 	avg_sims = [0,0,0,0,0]
 	for idx,posts in enumerate(post_list):
 		for post in posts:
-			avg_sims[idx] += post['sim']
+			avg_sims[idx] += post['topic']
 		avg_sims[idx] /= len(posts)
 		print(avg_sims[idx])
 
@@ -211,7 +215,7 @@ if __name__ == '__main__':
 	for posts in post_list:
 		result += posts
 	random.shuffle(result)
-	for post in result[:]:
+	for post in result[:20]:
 		print("#--------------------------#")
 		print(post['title'])
 		print(post['date'], "Like:" ,post['fav_cnt']) 
