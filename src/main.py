@@ -1,6 +1,9 @@
 #### SOOJLE Ver2 추천 뉴스피드 구현 코드
 #### 해당 뉴스피드는 [회원 추천 뉴스피드]에 한함
 #### 웹 시스템에서 일어나는 다른 과정은 스킵되어 있음
+#### 해당 코드는 따로 환경 변수 코드를 작성하지 않았음
+#### 나중에 밸런스를 조율할 수 있도록 변수 관리 코드에 
+#### 통합해주셈
 
 #---------------환경변수 접근용--------------#
 from iml_util import (db, timer, IMLError)
@@ -138,19 +141,23 @@ def get_sim(USER, POST, avg_popular = 20):
 	TOS = (dot(USER['topic'], POST['topic']) / 
 			(USER['norm']) * norm(POST['topic']))
 	#TAS
-	TAS = len(set(POST['tag']) & USER['tag_set']) / 10
+	TAS = len(set(POST['tag']) & USER['tag_set']) / 5
 	if TAS > 1: TAS = 1	
 	#FAS
 	FAS = vec_sim(USER['ft_vector'], POST['ft_vector'])
 	result = (TOS*1) + (TAS*1) + (FAS*1) 
 	# IS
-	week_count = ((datetime.now() - POST['date']) / 7).days + 1
-	if avg_popular < (POST['popularity'] / week_count):
-		result *= 1.3
+	# week_count = ((datetime.now() - POST['date']) / 7).days + 1
+	# if avg_popular < (POST['popularity'] / week_count):
+	# 	result *= 1.3
 	# Random
 	result += np.random.random() * 1
-		
+	
 	return result
+	# return result, {"TAS":TAS, 
+	# 				'FAS':FAS,"TOS":TOS, 
+	# 				"random":result-FAS-TOS-TAS,
+	# 				"TOS_set":set(POST['tag']) & USER['tag_set']}
 
 @timer
 def post_ranking(user, posts_list):
@@ -161,12 +168,13 @@ def post_ranking(user, posts_list):
 	for idx, posts in enumerate(posts_list):
 		for post in posts:
 			post['topic'] = get_sim(user, post)
+			#post['topic'],post['test'] = get_sim(user, post)
 			del post['ft_vector']
 			del post['tag']
 		posts_list[idx] = sorted(posts_list[idx], 
 			key=operator.itemgetter('topic'), reverse=True)
 	# 각 카테고리를 지정된 갯수만큼 자르기
-	total_post_num = [80,32,32,32,20]
+	total_post_num = [70,28,28,28,18]
 	for idx, _ in enumerate(posts_list):
 		posts_list[idx] = posts_list[idx][:total_post_num[idx]]
 	return posts_list
@@ -190,72 +198,17 @@ if __name__ == '__main__':
 	for post in result[:20]:
 		print("#--------------------------#")
 		print(post['title'])
-		print(post['date'], "Like:" ,post['fav_cnt']) 
+		print(post['date'], "Like:" ,post['fav_cnt'])
+		#pprint(post['test'])
 
-	# print("\n\n# 카테고리 최고 유사도")
-	# for posts in post_list:
-	# 	print(posts[0]['title'])
-	# 	print(posts[0]['topic'])
-	# print("\n# 카테고리별 평균 유사도")
-	# avg_sims = [0,0,0,0,0]
-	# for idx,posts in enumerate(post_list):
-	# 	for post in posts:
-	# 		avg_sims[idx] += post['topic']
-	# 	avg_sims[idx] /= len(posts)
-	# 	print(avg_sims[idx])
-
-	
-	
-	
-
-# #Pandas 정렬
-# @timer
-# def post_ranking_with_pandas(user, post_list):
-
-# 	# 한주동안 평균 인기도(가정)
-# 	# 해당 데이터도 캐싱되있어야 함
-# 	avg_popular = 20
-# 	# 연산을 위해 미리 캐싱해둠
-# 	norm_user = (norm(user['topic']))
-# 	tag_user = set(user['tag'].keys())
-# 	post_list = pd.DataFrame(post_list)
-# 	#최대 태그 가중치 제한 점수
-# 	max_tag_num = 10
-# 	# 평균 인기도 이상시의 가중치
-# 	popular_point = 1.3
-
-# 	post_list['sim'] = 0.0
-# 	# TOS 계산
-# 	post_list['sim'] += post_list.apply(
-# 	lambda x: (dot(x['topic'],user['topic']) / 
-# 		(norm_user * norm(x['topic']))), axis = 1)
-	
-# 	# TAS 계산
-# 	post_list['tag'] = post_list .apply(
-# 			lambda x: len(set(x['tag']) & tag_user),axis = 1)
-# 	post_list.loc[
-# 			post_list['tag'] > max_tag_num, 'tag'
-# 		] = max_tag_num
-# 	post_list['sim'] += (post_list['tag'] / max_tag_num)
-	
-# 	# FAS 계산
-# 	post_list['sim'] += post_list.apply(
-# 	lambda x: dot(x['ft_vector'],user['ft_vector']), axis = 1)
-	
-# 	# IS 계산 (기존의 점수 전체 가중)
-# 	month_count = ((datetime.now() - post_list['date'])/7 +timedelta(days = 1)).dt.days
-# 	post_list.loc[
-# 			((post_list['popularity'] / month_count) >= 
-# 				avg_popular), 'sim'
-# 		] *= popular_point
-
-# 	# RANDOM 가중치 계산
-# 	post_list['sim'] += np.random.random(len(post_list))*3
-	
-# 	#유사도에 따른 정렬
-# 	post_list = post_list.sort_values(by=['sim'], 
-# 						axis=0, ascending=False)
-# 	post_list['_id'] = post_list['_id'].astype(str)
-# 	#post_list['date'] = post_list['date'].astype(str)
-# 	#return post_list.to_json(orient='records')
-# 	return post_list
+	print("\n\n# 카테고리 최고 유사도")
+	for posts in post_list:
+		print(posts[0]['title'])
+		print(posts[0]['topic'])
+	print("\n# 카테고리별 평균 유사도")
+	avg_sims = [0,0,0,0,0]
+	for idx,posts in enumerate(post_list):
+		for post in posts:
+			avg_sims[idx] += post['topic']
+		avg_sims[idx] /= len(posts)
+		print(avg_sims[idx])
